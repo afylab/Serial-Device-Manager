@@ -21,13 +21,13 @@ identifying the port as corresponding to a particular
 type of device.
 """
 
+# names of server types (for classification of device type in registry)
+global serverNameAD5764_DCBOX; serverNameAD5764_DCBOX = "ad5764_dcbox"
+global serverNameAD5764_ACBOX; serverNameAD5764_ACBOX = "ad5764_acbox"
+
 # ports that the manager will always ignore.
 global blacklistedPorts
 blacklistedPorts = ['COM1']
-
-# For now, host is defined here.
-global host
-host = 'localhost'
 
 import time
 import platform
@@ -40,8 +40,8 @@ class serialDeviceManager(object):
 	def serialConnect(self):
 		"""Initializes connection to LabRAD, the serial server, and the registry"""
 
-		self.cxn = labrad.connect(host) # connect to labrad
-		computerName = platform.node()  # get computer name
+		self.cxn = labrad.connect()    # connect to labrad
+		computerName = platform.node() # get computer name
 
 		# LabRAD prefaces the serial server name with the computer name
 		# after shifting to lower case and replaceing spaces with underscores.
@@ -54,10 +54,13 @@ class serialDeviceManager(object):
 		"""Tries to identify any ports found"""
 		serialPorts = self.ser.list_serial_ports()                                      # all serial ports found
 		activePorts = [port for port in serialPorts if (port not in blacklistedPorts)]  # filter out ports present in blacklistedPorts
+		print('\n')                                                                     #
 		print("Found %i active serial port(s): %s"%(len(activePorts),str(activePorts))) # Print out number, names of ports found
+		print('\n')                                                                     #
 
 		for port in activePorts:
 			self.identifyPort(port)
+			print('\n\n\n')
 
 	def regWrite(self,serverType,deviceName,port):
 		"""Writes an entry in the registry linking 'port' to 'data'"""
@@ -72,24 +75,24 @@ class serialDeviceManager(object):
 		self.reg.cd(['','Servers'])
 		if not (serverType in self.reg.dir()[0]):
 			self.reg.mkdir(serverType)
-			print('Folder "%s" does not exist in "Server." Creating it.'%serverType)
+			print('Folder "%s" does not exist in "Servers." Creating it.'%serverType)
 
 		self.reg.cd(['','Servers',serverType]) # Finally, go the the pre-existing or newly created location
 		keys = self.reg.dir()[1]               # Fetch list of existing keys
 
 		if not (deviceName in keys):                              # If this device (deviceName) doesn't have a key already, make it.
 			self.reg.set(deviceName,(self.serialServerName,port)) # Write the port info.
-			print("Device %s of type %s not in registry. Adding it..."%(deviceName,serverType))
+			print("Device %s of type %s not in registry. Adding it (port %s)..."%(deviceName,serverType,port))
 
 		else:                                          # If this device already has an entry
 			existingPort = self.reg.get(deviceName)[1] # Get the port that supposedly corresponds to this device
 
-				if port == existingPort: # Device already in registry, port number agree.
-					print("Device %s of type %s is already in the registry with port %s"%(deviceName,serverType,port))
+			if port == existingPort: # Device already in registry, port number agree.
+				print("Device %s of type %s is already in the registry with port %s"%(deviceName,serverType,port))
 
-				else: # Device already in registry, port numbers disagree.
-					print("Device %s of type %s is already in registry. Ports disagree. (OLD:%s, NEW:%s). Overwriting..."%(deviceName,serverType,existingPort,port))
-					self.reg.set(deviceName,(self.serialServerName,port)) # Write the port info.
+			else: # Device already in registry, port numbers disagree.
+				print("Device %s of type %s is already in registry. Ports disagree. (OLD:%s, NEW:%s). Overwriting..."%(deviceName,serverType,existingPort,port))
+				self.reg.set(deviceName,(self.serialServerName,port)) # Write the port info.
 
 		# [!!!!] ADD THIS FUNCTIONALITY
 		# search for other entries linked to the same port (not including this result. This should only happen if a port changes device.)
@@ -111,23 +114,29 @@ class serialDeviceManager(object):
 		print("Trying device type: AC/DC box") # 
 		acdcBoxBaudrate = 115200               # baudrate for this device
 		self.ser.baudrate(acdcBoxBaudrate)     # set the baudrate
-		self.ser.write('\r\n');self.ser.read() # flush the interface
-		ser.write("*IDN?\r\n")                 # query identification command
-		response = ser.read_line()             # get response from device
+		self.ser.write('\r\n')                 # 
+		time.sleep(0.25); self.ser.read()      # flush the interface
+		self.ser.write("*IDN?\r\n")            # query identification command
+		response = self.ser.read_line()        # get response from device
 
 		if response.startswith('DCBOX_DUAL_AD5764'):                         # For a DCBOX, the response to *IDN? will be "DCBOX_DUAL_AD5764(NAME)"
 			print("Port %s identified as a DCBOX_DUAL_AD5764 device."%port)  # Print info that port has been identified
-			self.regWrite('ad5764_dcbox',port)                               # Write a registry entry identifying this port as corresponding to a DCBOX_DUAL_AD5764 device
+			self.regWrite(serverNameAD5764_DCBOX,response,port)              # Write a registry entry identifying this port as corresponding to a DCBOX_DUAL_AD5764 device
 			return True                                                      # Returning True tells the run() function that the port has been identified.
 
-		if response.startswith('ACBOX_DUAL_AD5764'):                         # For an ACBOX, the response to *IDN? will be "ACBOX_DUAL_AD5764(NAME)"
+		elif response.startswith('ACBOX_DUAL_AD5764'):                       # For an ACBOX, the response to *IDN? will be "ACBOX_DUAL_AD5764(NAME)"
 			print("Port %s identified as an ACBOX_DUAL_AD5764 device."%port) # Print info that port has been identified
-			self.regWrite('ad5764_acbox',port)                               # Write a registry entry identifying this port as corresponding to an ACBOX_DUAL_AD5764 device.
+			self.regWrite(serverNameAD5764_ACBOX,response,port)              # Write a registry entry identifying this port as corresponding to an ACBOX_DUAL_AD5764 device.
 			return True                                                      #
+
+		else:                                                                # no response
+			print("Port %s cannot be identified as an AC/DC box."%port)      # or unrecognized response
 
 		time.sleep(1) # sleep 1 second between attempts to identify. This prevents flooding the port with signals too quickly.
 
-
+		#########################
+		## next device type(s) ##
+		#########################
 
 
 
