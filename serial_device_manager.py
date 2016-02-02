@@ -62,11 +62,40 @@ class serialDeviceManager(object):
 			self.identifyPort(port)
 			print('\n\n\n')
 
+		# Also ensure that the "Servers" folder exists, even if there aren't any devices identified.
+		self.reg.cd([''])
+		if not ("Servers" in self.reg.dir()[0]):
+			self.reg.mkdir("Servers")
+			print('Folder "Servers" does not exist in registry. Creating it.')
+
+	def getPortDevices(self,port):
+		"""Gets a list of all registry entries that point to COM port 'port'"""
+
+		regEntries = []
+
+		self.reg.cd([''])                      # If there's no Servers folder,
+		if not 'Servers' in self.reg.dir()[0]: # there are no device entries.
+			return regEntries                  # Note that this function should never be called if there is no "Servers" folder.
+
+		self.reg.cd(['','Servers'])
+		serverTypes = self.reg.dir()[0]
+
+		for sType in serverTypes:
+			self.reg.cd(['','Servers',sType,'Links'])
+			entries = self.reg.dir()[1]
+			for entry in entries:
+				contents = self.reg.get(entry)
+				if contents[1] == port:
+					regEntries.append([['','Servers',sType],entry])
+
+		return regEntries
+
+
 	def regWrite(self,serverType,deviceName,port):
 		"""Writes an entry in the registry linking 'port' to 'data'"""
 
 		# If 'Servers' folder doesn't exist in registry root, make it.
-		self.reg.cd('')
+		self.reg.cd([''])
 		if not ('Servers' in self.reg.dir()[0]):
 			self.reg.mkdir('Servers')
 			print('Folder "Servers" does not exist in registry. Creating it.')
@@ -77,8 +106,14 @@ class serialDeviceManager(object):
 			self.reg.mkdir(serverType)
 			print('Folder "%s" does not exist in "Servers." Creating it.'%serverType)
 
-		self.reg.cd(['','Servers',serverType]) # Finally, go the the pre-existing or newly created location
-		keys = self.reg.dir()[1]               # Fetch list of existing keys
+		# In the server specific folder, make sure there is a folder named "Links"
+		self.reg.cd(['','Servers',serverType])
+		if not ('Links' in self.reg.dir()[0]):
+			self.reg.mkdir('Links')
+			print('Folder "Links" missing from server directory. Creating it.')
+
+		self.reg.cd(['','Servers',serverType,'Links']) # Finally, go the the pre-existing or newly created location
+		keys = self.reg.dir()[1]                       # Fetch list of existing keys
 
 		if not (deviceName in keys):                              # If this device (deviceName) doesn't have a key already, make it.
 			self.reg.set(deviceName,(self.serialServerName,port)) # Write the port info.
