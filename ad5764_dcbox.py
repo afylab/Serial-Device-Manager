@@ -19,9 +19,11 @@
 name = Arduino DC box
 version = 1.0
 description =
+
 [startup]
 cmdline = %PYTHON% %FILE%
 timeout = 20
+
 [shutdown]
 message = 987654321
 timeout = 20
@@ -30,7 +32,11 @@ timeout = 20
 
 import platform
 global serial_server_name
-serial_server_name = (platform.node()+'_serial_server').lower().replace(' ','_')
+serial_server_name = (platform.node()+'_serial_server').lower().replace(' ','_').replace('-','_')
+
+
+
+
 
 from labrad.server import setting
 from labrad.devices import DeviceServer,DeviceWrapper
@@ -39,6 +45,7 @@ import labrad.units as units
 from labrad.types import Value
 TIMEOUT = Value(5,'s')
 BAUD    = 115200
+
 
 # this is the server name under which devices of this type are stored in the registry.
 global serverNameAD5764_DCBOX; serverNameAD5764_DCBOX = "ad5764_dcbox"
@@ -65,20 +72,21 @@ class arduinoDCBoxWrapper(DeviceWrapper):
         yield p.send()
 
     def packet(self):
-        """Create a packet in our private context."""
+        """Create a packet in our private context"""
         return self.server.packet(context=self.ctx)
 
     def shutdown(self):
-        """Disconnect from the serial port when we shut down."""
+        """Disconnect from the serial port when we shut down"""
         return self.packet().close().send()
 
     @inlineCallbacks
     def write(self, code):
-        """Write a data value to the heat switch."""
+        """Write a data value to the DCBOX"""
         yield self.packet().write(code).send()
 
     @inlineCallbacks
     def read(self):
+        """Read a response line from the DCBOX"""
         p=self.packet()
         p.read_line()
         ans=yield p.send()
@@ -149,8 +157,7 @@ class arduinoDCBoxServer(DeviceServer):
     @inlineCallbacks
     def findDevices(self):
         """Gets list of devices whose ports are active (available devices.)"""
-        
-        devs           = []
+        devs = []
 
         for name, (serialServer, port) in self.serialLinks.items():
             if serialServer not in self.client.servers:
