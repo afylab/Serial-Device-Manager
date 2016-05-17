@@ -45,7 +45,7 @@ class serialDeviceManager(object):
 
 		# LabRAD prefaces the serial server name with the computer name
 		# after shifting to lower case and replaceing spaces with underscores.
-		self.serialServerName = computerName.lower().replace(' ','_').replace('-','_') + '_serial_server'
+		self.serialServerName = computerName.lower().replace(' ','_') + '_serial_server'
 
 		self.ser = self.cxn.servers[self.serialServerName] # connect to serial server
 		self.reg = self.cxn.registry                       # connect to the registry
