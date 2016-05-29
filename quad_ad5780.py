@@ -147,6 +147,7 @@ class QuadAD5764DcboxServer(DeviceServer):
             if port not in ports:
                 print("Device %s on server %s with port %s not available: port %s is not active."%(name,serialServer,port,port))
                 continue
+            print("Device %s with port %s on server %s succesfully connected"%(name,port,serialServer))
 
             devName = '%s (%s)' % (self.name, port)
             devs += [(devName, (self.client[serialServer], port))]
