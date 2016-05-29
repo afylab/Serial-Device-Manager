@@ -55,7 +55,7 @@ import labrad.units as units
 from labrad.types import Value
 import time
 TIMEOUT = Value(5,'s')
-BAUD    = 19200
+BAUD    = 115200
 
 # this is the server name under which devices of this type are stored in the registry.
 global serverNameAD5764_ACBOX; serverNameAD5764_ACBOX = "ad5764_acbox"
@@ -159,7 +159,8 @@ class AD5764AcboxServer(DeviceServer):
     def findDevices(self):
         """Gets list of devices whose ports are active (available devices.)"""
         devs = []
-        self.voltages = {}
+        self.voltages = []
+        dev_number = 0
 
         for name, (serialServer, port) in self.serialLinks.items():
             if serialServer not in self.client.servers:
@@ -174,9 +175,11 @@ class AD5764AcboxServer(DeviceServer):
                 continue
 
             devName = '%s (%s)'%(self.name,port)
-            devs += [(devName, (self.client[serialServer],port))]
-            self.voltages.update([ [devName,[port]+['unknown' for pos in range(6)]] ])
+            devs          += [(devName, (self.client[serialServer],port))]
+            self.voltages.append([port]+['unknown' for pos in range(6)])
+            #print(self.voltages[0])
             #self.voltages.append([port]+['unknown' for pos in range(6)])
+            dev_number += 1
             
 
         returnValue(devs)
@@ -348,6 +351,9 @@ Channel must be either "X1" "Y1" "X2" or "Y2\""""
         """Causes the server to query the device for its current settings. Usage is read_settings()
 It's only necessary to call this once on startup, as the server keeps track of the changes made."""
         dev=self.selectedDevice(c)
+        #print(self.voltages)
+        #print(c['device'])
+        #print(c.keys())
         for n in range(4):
             yield dev.write("GET,%s\r"%int_to_port[n])
             ans = yield dev.read()

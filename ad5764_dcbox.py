@@ -151,7 +151,7 @@ class arduinoDCBoxServer(DeviceServer):
             p.get(k, key=k)
             
         ans = yield p.send()
-        print "ans=",ans
+        #print "ans=",ans
         self.serialLinks = dict((k, ans[k]) for k in keys)
 
     @inlineCallbacks
