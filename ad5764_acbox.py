@@ -113,7 +113,7 @@ class AD5764AcboxWrapper(DeviceWrapper):
 
 
 class AD5764AcboxServer(DeviceServer):
-    name             = 'ad5764_acbox'
+    name             = serverNameAD5764_ACBOX
     deviceName       = 'Arduino Acbox'
     deviceWrapper    = AD5764AcboxWrapper
     clock_multiplier = 5
@@ -145,15 +145,6 @@ class AD5764AcboxServer(DeviceServer):
         print "ans=",ans
         self.serialLinks = dict((k, ans[k]) for k in keys)
 
-    # old loadConfigInfo function
-    #@inlineCallbacks
-    #def loadConfigInfo(self):
-    #    from labrad.wrappers import connectAsync
-    #    cxn=yield connectAsync()
-    #    reg=cxn.registry
-    #    context = yield cxn.context()
-    #    self.serialLinks = {}
-    #    print('SERVERS:',self.client.servers.keys())
     
     @inlineCallbacks
     def findDevices(self):
@@ -173,6 +164,7 @@ class AD5764AcboxServer(DeviceServer):
             if port not in ports:
                 print("Device %s on server %s with port %s not available: port %s is not active."%(name,serialServer,port,port))
                 continue
+            print("Device %s with port %s on server %s succesfully connected"%(name,port,serialServer))
 
             devName = '%s (%s)'%(self.name,port)
             devs          += [(devName, (self.client[serialServer],port))]
