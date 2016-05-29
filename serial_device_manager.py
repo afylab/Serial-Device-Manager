@@ -22,8 +22,12 @@ type of device.
 """
 
 # names of server types (for classification of device type in registry)
-global serverNameAD5764_DCBOX; serverNameAD5764_DCBOX = "ad5764_dcbox"
-global serverNameAD5764_ACBOX; serverNameAD5764_ACBOX = "ad5764_acbox"
+global serverNameAD5764_DCBOX; serverNameAD5764_DCBOX = "ad5764_dcbox" # ad5764 dcbox
+global serverNameAD5764_ACBOX; serverNameAD5764_ACBOX = "ad5764_acbox" # ad5764 acbox
+global serverNameAD5780_DCBOX; serverNameAD5780_DCBOX = "ad5780_dcbox" # ad5780 dcbox quad
+
+global IO_DELAY  ;IO_DELAY   = 0.1 # delay between read and write
+global PORT_DELAY;PORT_DELAY = 2.0 # delay after opening serial port
 
 # ports that the manager will always ignore.
 global blacklistedPorts
@@ -142,36 +146,52 @@ class serialDeviceManager(object):
 		print("")                              # 
 		print("Connecting to port %s..."%port) # 
 		self.ser.open(port)                    # connect to the given port
+		time.sleep(PORT_DELAY)
 		
 		#####################
 		## ACbox and DCbox ##
 		#####################
-		print("Trying device type: AC/DC box") # 
-		acdcBoxBaudrate = 115200               # baudrate for this device
-		self.ser.baudrate(acdcBoxBaudrate)     # set the baudrate
-		self.ser.write('\r\n')                 # 
-		time.sleep(0.25); self.ser.read()      # flush the interface
-		self.ser.write("*IDN?\r\n")            # query identification command
-		response = self.ser.read_line()        # get response from device
+		print("\tTrying device type: AC/DC box") # 
+		acdcBoxBaudrates = [115200]      # values of baudrates for this type of device
+		for rate in acdcBoxBaudrates:
+			time.sleep(IO_DELAY)
+			self.ser.baudrate(rate)                # set the baudrate
+			self.ser.write('NOP\r\n')              # 
+			time.sleep(IO_DELAY); self.ser.read()  # flush the interface
+			self.ser.write("*IDN?\r\n")            # query identification command
+			time.sleep(IO_DELAY)                   # delay for processing
+			response = self.ser.read_line()        # get response from device
+			if response:
+				print("\tGot response: <%s>"%response)
+				break # if we got a non-empty response, don't try any more baudrates.
+				
 
 		if response.startswith('DCBOX_DUAL_AD5764'):                         # For a DCBOX, the response to *IDN? will be "DCBOX_DUAL_AD5764(NAME)"
-			print("Port %s identified as a DCBOX_DUAL_AD5764 device."%port)  # Print info that port has been identified
+			print("\tPort %s identified as a DCBOX_DUAL_AD5764 device."%port)  # Print info that port has been identified
 			self.regWrite(serverNameAD5764_DCBOX,response,port)              # Write a registry entry identifying this port as corresponding to a DCBOX_DUAL_AD5764 device
 			return True                                                      # Returning True tells the run() function that the port has been identified.
 
 		elif response.startswith('ACBOX_DUAL_AD5764'):                       # For an ACBOX, the response to *IDN? will be "ACBOX_DUAL_AD5764(NAME)"
-			print("Port %s identified as an ACBOX_DUAL_AD5764 device."%port) # Print info that port has been identified
+			print("\tPort %s identified as an ACBOX_DUAL_AD5764 device."%port) # Print info that port has been identified
 			self.regWrite(serverNameAD5764_ACBOX,response,port)              # Write a registry entry identifying this port as corresponding to an ACBOX_DUAL_AD5764 device.
 			return True                                                      #
 
+		elif response.startswith('DCBOX_QUAD_AD5780'):
+			print('\tPort %s identified as a DCBOX_QUAD_AD5780 device.'%port)
+			self.regWrite(serverNameAD5780_DCBOX,response,port)
+			return True
+
 		else:                                                                # no response
-			print("Port %s cannot be identified as an AC/DC box."%port)      # or unrecognized response
+			print("\tPort %s cannot be identified as an AC/DC box."%port)      # or unrecognized response
+			print("\tResponded with <%s>"%response)
 
 		time.sleep(1) # sleep 1 second between attempts to identify. This prevents flooding the port with signals too quickly.
 
 		#########################
 		## next device type(s) ##
 		#########################
+
+		self.ser.close() # close the port
 
 
 
