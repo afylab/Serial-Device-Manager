@@ -48,7 +48,7 @@ global port_to_int,int_to_port
 port_to_int = {'X1':0,'Y1':1,'X2':2,'Y2':3}
 int_to_port = ['X1','Y1','X2','Y2']
 
-from labrad.server import setting
+from labrad.server import setting,Signal
 from labrad.devices import DeviceServer,DeviceWrapper
 from twisted.internet.defer import inlineCallbacks, returnValue
 import labrad.units as units
@@ -118,6 +118,16 @@ class AD5764AcboxServer(DeviceServer):
     deviceWrapper    = AD5764AcboxWrapper
     clock_multiplier = 5
 
+    # For this server: prefix = 700, suffix = <###> ( <700###> )
+    # <7000##> channel activity
+    sigChannelVoltageChanged   = Signal(700000,'signal__channel_voltage_changed', "*s")
+    sigChannelVoltageChangedX1 = Signal(700001,'signal__channel_x1_voltage_changed',"s")
+    sigChannelVoltageChangedX2 = Signal(700002,'signal__channel_x2_voltage_changed',"s")
+    sigChannelVoltageChangedY1 = Signal(700003,'signal__channel_y1_voltage_changed',"s")
+    sigChannelVoltageChangedY2 = Signal(700004,'signal__channel_y2_voltage_changed',"s")
+
+    channelSignals={'X1':sigChannelVoltageChangedX1,'X2':sigChannelVoltageChangedX2,'Y1':sigChannelVoltageChangedY1,'Y2':sigChannelVoltageChangedY2}
+
     @inlineCallbacks
     def initServer(self):
         print 'Loading config from registry...',
@@ -126,6 +136,7 @@ class AD5764AcboxServer(DeviceServer):
         print 'Finished.'
         print("Serial links found: %s"%str(self.serialLinks))
         yield DeviceServer.initServer(self)
+
 
     @inlineCallbacks
     def loadConfigInfo(self):
@@ -150,6 +161,7 @@ class AD5764AcboxServer(DeviceServer):
     def findDevices(self):
         """Gets list of devices whose ports are active (available devices.)"""
         devs = []
+        ports = []
         self.voltages = []
         dev_number = 0
 
@@ -167,29 +179,17 @@ class AD5764AcboxServer(DeviceServer):
             print("Device %s with port %s on server %s succesfully connected"%(name,port,serialServer))
 
             devName = '%s (%s)'%(self.name,port)
+            ports.append(str(port))
             devs          += [(devName, (self.client[serialServer],port))]
             self.voltages.append([port]+['unknown' for pos in range(6)])
-            #print(self.voltages[0])
-            #self.voltages.append([port]+['unknown' for pos in range(6)])
+
+            #self.sigComPortConnected(str(port)) # send the 'connected to a port' signal out
+
             dev_number += 1
             
 
+        #yield self.sigServerStartup(ports) # send the startup signal out, inluding active ports
         returnValue(devs)
-
-    # old findDevices function
-    #@inlineCallbacks
-    #def findDevices(self):
-    #    server  = self.client.servers[serial_server_name]
-    #    manager = self.client.serial_device_manager
-    #    ports = yield manager.list_ad5764_acbox_devices()
-
-    #    devs = []
-    #    self.voltages = []
-    #    for port in ports:
-    #        devs.append(('acbox (%s)'%port[0],(server,port[0])))
-    #        self.voltages.append([port[0]]+['unknown' for pos in range(6)])
-    #        # entries of voltages[i] are [port, x1, y1, x2, y2, frequency, phase]
-    #    returnValue(devs)
 
     @setting(100)
     def connect(self,c,server,port):
@@ -225,8 +225,11 @@ Channel must be "X1" "Y1" "X2" or "Y2" and the value must be from 0 to 1"""
         
         yield dev.write("UPD\r") # updates boards automatically
         upd = yield dev.read()   # on changing any relevant setting
-        
-        self.voltages[c['device']][port_to_int[channel] + 1] = ans.partition(' to ')[2]
+
+        resp = ans.partition(' to ')[2]
+
+        yield self.sigChannelVoltageChanged([channel,resp]) # send general signal
+        yield self.channelSignals[channel](resp)
         
         returnValue(ans)
 

@@ -38,7 +38,7 @@ serial_server_name = (platform.node()+'_serial_server').lower().replace(' ','_')
 
 
 
-from labrad.server import setting
+from labrad.server import setting,Signal
 from labrad.devices import DeviceServer,DeviceWrapper
 from twisted.internet.defer import inlineCallbacks, returnValue
 import labrad.units as units
@@ -119,6 +119,22 @@ class arduinoDCBoxServer(DeviceServer):
     name          = 'ad5764_dcbox'
     deviceName    = 'Arduino DC box'
     deviceWrapper = arduinoDCBoxWrapper
+
+    # For this server: prefix = 701, suffix = <###> ( <701###> )
+    # <7010##> channel activity
+    sigChannelVoltageChanged  = Signal(701010,'signal__channel_voltage_changed', '*s')
+    sigChannelVoltageChanged0 = Signal(701000,'signal__channel_0_voltage_changed','s')
+    sigChannelVoltageChanged1 = Signal(701001,'signal__channel_1_voltage_changed','s')
+    sigChannelVoltageChanged2 = Signal(701002,'signal__channel_2_voltage_changed','s')
+    sigChannelVoltageChanged3 = Signal(701003,'signal__channel_3_voltage_changed','s')
+    sigChannelVoltageChanged4 = Signal(701004,'signal__channel_4_voltage_changed','s')
+    sigChannelVoltageChanged5 = Signal(701005,'signal__channel_5_voltage_changed','s')
+    sigChannelVoltageChanged6 = Signal(701006,'signal__channel_6_voltage_changed','s')
+    sigChannelVoltageChanged7 = Signal(701007,'signal__channel_7_voltage_changed','s')
+
+    channelSignals=[sigChannelVoltageChanged0,sigChannelVoltageChanged1,sigChannelVoltageChanged2,sigChannelVoltageChanged3,sigChannelVoltageChanged4,sigChannelVoltageChanged5,sigChannelVoltageChanged6,sigChannelVoltageChanged7]
+
+    # remove this after signals functional
     voltages      = {}
 
     def trackVoltage(self,device,ports,value):
@@ -192,9 +208,11 @@ class arduinoDCBoxServer(DeviceServer):
             returnValue("Error: invalid voltage. It must be between -10 and 10.") # 
             return                                                                # 
         dev=self.selectedDevice(c)                                                # 
-        ans=yield dev.set_voltage(port,voltage)                                   # 
-        yield self.trackVoltage(c['device'],[port],str(round(voltage,4)))         # 
-        returnValue(ans)                                                          # 
+        ans=yield dev.set_voltage(port,voltage)              # set the voltage
+        val=str(ans.partition(' TO ')[2])                    # get the response (what the voltage was set to)
+        yield self.sigChannelVoltageChanged([str(port),val]) # send the general    <value changed> signal
+        yield self.channelSignals[port](val)                 # send the individual <value changed> signsl
+        returnValue(ans)                                     # return the response (full, not just voltage)
 
     @setting(300,voltage='v',returns='s')                                         # setting 300
     def set_all(self,c,voltage):                                                  # Set all
@@ -203,12 +221,15 @@ class arduinoDCBoxServer(DeviceServer):
             returnValue("Error: invalid voltage. It must be between -10 and 10.") # input (voltage): float or int in range[-10,10] in Volts.
             return                                                                # 
         dev  = self.selectedDevice(c)                                             # 
-        resp = []                                                                 # 
-        for port in range(8):                                                     # 
-            ans = yield dev.set_voltage(port,voltage)                             #
-            resp.append(ans)                                                      #
-        yield self.trackVoltage(c['device'],range(8),str(round(voltage,4)))       #
-        returnValue("All PORTS %s"%resp[0][6:])                                   #
+        resp = []
+
+        for port in range(8):                              # For each port on the bord:
+            ans = yield dev.set_voltage(port,voltage)      #     Set the voltage
+            val=str(ans.partition(' TO ')[2])              #     get the answer (what it was set to)
+            self.sigChannelVoltageChanged([str(port),val]) #     Send the general  signal with <port,value>
+            self.channelSignals[port](val)                 #     Send the specific signal with <value>
+
+        returnValue("All PORTS %s"%ans[6:])
 
     @setting(400)
     def read_voltages(self,c):
