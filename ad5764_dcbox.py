@@ -134,14 +134,8 @@ class arduinoDCBoxServer(DeviceServer):
 
     channelSignals=[sigChannelVoltageChanged0,sigChannelVoltageChanged1,sigChannelVoltageChanged2,sigChannelVoltageChanged3,sigChannelVoltageChanged4,sigChannelVoltageChanged5,sigChannelVoltageChanged6,sigChannelVoltageChanged7]
 
-    # remove this after signals functional
-    voltages      = {}
+    
 
-    def trackVoltage(self,device,ports,value):
-        if not (device in self.voltages.keys()):
-            self.voltages.update([[device,['unknown' for port in range(8)]]])
-        for port in ports:
-            self.voltages[device][port] = value
 
     @inlineCallbacks
     def initServer(self):
@@ -189,7 +183,6 @@ class arduinoDCBoxServer(DeviceServer):
 
             devName = '%s (%s)'%(self.name,port)
             devs += [(devName, (self.client[serialServer],port))]
-            #self.voltages.update([[devName,['unknown' for p in range(8)]]])
 
         returnValue(devs)
 
@@ -240,26 +233,28 @@ class arduinoDCBoxServer(DeviceServer):
         for port in range(8):
             yield dev.write("GET_DAC,%i\r\n"%port)
             ans = yield dev.read()
-            self.trackVoltage(c['device'],[port],ans)
-
+            yield self.channelSignals[port](ans)
+            yield self.sigChannelVoltageChanged([str(port),ans])
 
     @setting(500,returns='*s')                       # Returns list of voltages for currently selected device
     def get_voltages(self,c):                        # [port_0_voltage, port_1_voltage, ... , port_7_voltage]
-        try:                                         #
-            ret = yield self.voltages[c['device']]   #
-        except:                                      #
-            ret = ['unknown' for p in range(8)]      #
-            self.trackVoltage(c['device'],[],0.0)    # 
-        returnValue(self.voltages[c['device']])      # 
+        dev = self.selectedDevice(c)
+        resps = []
+        for port in range(8):
+            yield dev.write("GET_DAC,%i\r\n"%port)
+            ans = yield dev.read()
+            resps.append(ans)
+        returnValue(resps)
 
     @setting(501,port='i',returns='s')                   # Returns the voltage on port number 'port' on currently selected device
-    def get_voltage(self,c,port):                        # 
-        try:                                             # 
-            val = yield self.voltages[c['device']][port] # 
-        except:                                          #
-            val = 'unknown'                              #
-            self.trackVoltage(c['device'],[],0.0)        #
-        returnValue(val)                                 #
+    def get_voltage(self,c,port):
+        if not (port in range(8)):
+            err = yield "Invalid"
+            returnValue(err)
+        dev=self.selectedDevice(c)
+        yield dev.write("GET_DAC,%i\r\n"%port)
+        ans = yield dev.read()
+        returnValue(ans)
 
     @setting(600,returns='s')              # Low level commands
     def read(self,c):                      # reads output directly from DCBOX com

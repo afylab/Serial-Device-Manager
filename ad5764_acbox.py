@@ -126,6 +126,11 @@ class AD5764AcboxServer(DeviceServer):
     sigChannelVoltageChangedY1 = Signal(700003,'signal__channel_y1_voltage_changed',"s")
     sigChannelVoltageChangedY2 = Signal(700004,'signal__channel_y2_voltage_changed',"s")
 
+    sigFrequencyChanged = Signal(700010,'signal__frequency_changed','s')
+    sigPhaseChanged     = Signal(700011,'signal__phase_changed'    ,'s')
+    sigInitDone         = Signal(700012,'signal__init_done'        ,'s')
+    sigResetDone        = Signal(700013,'signal__reset_done'       ,'s')
+
     channelSignals={'X1':sigChannelVoltageChangedX1,'X2':sigChannelVoltageChangedX2,'Y1':sigChannelVoltageChangedY1,'Y2':sigChannelVoltageChangedY2}
 
     @inlineCallbacks
@@ -208,6 +213,7 @@ class AD5764AcboxServer(DeviceServer):
         yield dev.read()         # clear output buffer
         yield dev.write("INIT,%i\r"%clock_multiplier);
         ans = yield dev.read()
+        yield self.sigInitDone(str(clock_multiplier)) # send init signal
         returnValue(ans)
 
     @setting(202,channel='s',value='v',returns='s')
@@ -247,7 +253,7 @@ The offset is taken modulo 360."""
         yield dev.write("UPD\r") # updates boards automatically
         upd = yield dev.read()   # on changing any relevant setting
 
-        self.voltages[c['device']][6] = ans1.partition(' to ')[2]
+        yield self.sigPhaseChanged(ans1.lower().partition(' to ')[2])
 
         returnValue(ans1)
 
@@ -270,7 +276,7 @@ where clock_multiplier is the multiplier set with the initialize function."""
         yield dev.write("UPD\r") # updates boards automatically
         upd = yield dev.read()   # on changing any relevant setting
 
-        self.voltages[c['device']][5] = ans.partition(' to ')[2]
+        yield self.sigFrequencyChanged(ans.lower().partition(' to ')[2])
 
         returnValue(ans)
 
@@ -297,6 +303,7 @@ Once this is called, initialize must be called again before the device outputs a
         dev=self.selectedDevice(c)
         yield dev.write("MR\r")
         ans = yield dev.read()
+        yield self.sigResetDone(ans)
         returnValue(ans)
 
     @setting(208,returns='s')
@@ -312,7 +319,7 @@ if the boards aren't responding to changes, try calling this function."""
     @setting(209,channel='s',returns=['v','s'])
     def get_channel_voltage(self,c,channel):
         """Queries the device for the voltage on a specific channel. Usage is get_channel_voltage(channel)
-Channel must be either "X1" "Y1" "X2" or "Y2\""""
+Channel must be either "X1" "Y1" "X2" or "Y2\" """
         if not (channel in ["X1","X2","Y1","Y2"]):
                 yield
                 returnValue("Error: invalid channel. It must be either \"X1\" \"Y1\" \"X2\" or \"Y2\"")
