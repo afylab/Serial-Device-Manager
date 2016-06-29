@@ -189,21 +189,21 @@ class arduinoDCBoxServer(DeviceServer):
             ans.append(resp)
         returnValue(ans)
 
-    @setting(210,port='i',returns='s')
+    @setting(210,port='i',returns='v')
     def get_voltage(self,c,port):
         if not (port in self.validPorts):
             returnValue("Error: invalid port. Port must be from 0 to 7.")
         dev = self.selectedDevice(c)
         ans = yield dev.get_voltage(port)
-        returnValue(ans)
+        returnValue(float(ans))
 
-    @setting(211,returns='*s')
+    @setting(211,returns='*v')
     def get_all(self,c):
         ans = []
         dev = self.selectedDevice(c)
         for port in self.validPorts:
             resp = yield dev.get_voltage(port)
-            ans.append(resp)
+            ans.append(float(resp))
         returnValue(ans)
 
     @setting(300)
