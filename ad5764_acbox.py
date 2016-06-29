@@ -16,9 +16,9 @@
 """
 ### BEGIN NODE INFO
 [info]
-name = ACBOX Arduino
+name = Arduino AC box server
 version = 1.0
-description = ACBOX control
+description = Arduino AC box server
 
 [startup]
 cmdline = %PYTHON% %FILE%
@@ -29,16 +29,6 @@ message = 987654321
 timeout = 20
 ### END NODE INFO
 """
-
-print("""
-###############################################################
-## Warning: this server has been updated but not yet tested. ##
-## It will likely not work perfectly. It will be tested and  ##
-## updated in the near future when I am able to get a setup  ##
-## running for testing it with an ACBOX device.              ##
-###############################################################
-""")
-
 
 import platform
 global serial_server_name
@@ -53,7 +43,6 @@ from labrad.devices import DeviceServer,DeviceWrapper
 from twisted.internet.defer import inlineCallbacks, returnValue
 import labrad.units as units
 from labrad.types import Value
-import time
 TIMEOUT = Value(5,'s')
 BAUD    = 115200
 
