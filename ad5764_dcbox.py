@@ -41,8 +41,8 @@ class serverInfo(object):
         self.deviceName = 'Arduino DC Box'
         self.serverName = "ad5764_dcbox"
 
-    def getDeviceName(self,port):
-        return "%s (%s)"%(self.serverName, port)
+    def getDeviceName(self,comPort):
+        return "%s (%s)"%(self.serverName, comPort)
 
 class arduinoDCBoxWrapper(DeviceWrapper):
 
