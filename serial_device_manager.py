@@ -24,7 +24,7 @@ type of device.
 # names of server types (for classification of device type in registry)
 global serverNameAD5764_DCBOX; serverNameAD5764_DCBOX = "ad5764_dcbox" # ad5764 dcbox
 global serverNameAD5764_ACBOX; serverNameAD5764_ACBOX = "ad5764_acbox" # ad5764 acbox
-global serverNameAD5780_DCBOX; serverNameAD5780_DCBOX = "DCBOX QUAD AD5780" # ad5780 dcbox quad
+global serverNameAD5780_DCBOX; serverNameAD5780_DCBOX = "dcbox_quad_ad5780" # ad5780 dcbox quad
 
 global IO_DELAY  ;IO_DELAY   = 0.1 # delay between read and write
 global PORT_DELAY;PORT_DELAY = 2.0 # delay after opening serial port
