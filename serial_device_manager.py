@@ -25,6 +25,7 @@ type of device.
 global serverNameAD5764_DCBOX; serverNameAD5764_DCBOX = "ad5764_dcbox" # ad5764 dcbox
 global serverNameAD5764_ACBOX; serverNameAD5764_ACBOX = "ad5764_acbox" # ad5764 acbox
 global serverNameAD5780_DCBOX; serverNameAD5780_DCBOX = "dcbox_quad_ad5780" # ad5780 dcbox quad
+global serverNameDAC_ADC     ; serverNameDAC_ADC      = "dac_adc"
 
 global IO_DELAY  ;IO_DELAY   = 0.1 # delay between read and write
 global PORT_DELAY;PORT_DELAY = 2.0 # delay after opening serial port
@@ -179,6 +180,11 @@ class serialDeviceManager(object):
 		elif response.startswith('DCBOX_QUAD_AD5780'):
 			print('\tPort %s identified as a DCBOX_QUAD_AD5780 device.'%port)
 			self.regWrite(serverNameAD5780_DCBOX,response,port)
+			return True
+
+		elif response.startswith('DAC-ADC_AD7734-AD5764'): # DAC-ACD; for now they have no unique name: the entire response is "DAC-ADC_AD7734-AD5764". This will be an issue if/when we have multiple DAC-ADCs active.
+			print('\tPort %s identified as a DAC-ADC device'%port)
+			self.regWrite(serverNameDAC_ADC,response,port)
 			return True
 
 		else:                                                                # no response
